@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TriOS - AI Collaboration OS</title>
+
+<style>
+:root {
+    --taskbar-bg: rgba(20,20,20,0.85);
+    --accent: #0078d7;
+    --win-bg: #ffffff;
+    --win-header-bg: #f3f3f3;
+    --desktop-bg: linear-gradient(120deg,#1e3c72,#2a5298);
+    --text-color: #000;
+    --start-bg: rgba(25,25,25,0.95);
+    --start-text: #fff;
+}
+
+body.dark {
+    --taskbar-bg: rgba(10,10,10,0.9);
+    --accent: #00b7ff;
+    --win-bg: #181818;
+    --win-header-bg: #202020;
+    --desktop-bg: radial-gradient(circle at top,#202020,#050505);
+    --text-color: #f5f5f5;
+    --start-bg: rgba(10,10,10,0.95);
+    --start-text: #f5f5f5;
+}
+
+body, html {
+    margin:0;
+    padding:0;
+    height:100%;
+    font-family:'Segoe UI', Roboto, sans-serif;
+    overflow:hidden;
+    background:#000;
+    color:var(--text-color);
+}
+
+/* Boot */
+#boot {
+    position:fixed;
+    inset:0;
+    background:black;
+    color:white;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    z-index:9999;
+}
+
+.spinner {
+    width:40px;
+    height:40px;
+    border:4px solid #333;
+    border-top:4px solid var(--accent);
+    border-radius:50%;
+    animation:spin 1s linear infinite;
+    margin-bottom:20px;
+}
+@keyframes spin {100%{transform:rotate(360deg);}}
+
+/* Login */
+#login {
+    display:none;
+    position:fixed;
+    inset:0;
+    background:#111;
+    color:white;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+    z-index:8000;
+}
+
+#login button {
+    margin-top:15px;
+    padding:8px 18px;
+    border:none;
+    border-radius:4px;
+    background:var(--accent);
+    color:#fff;
+    cursor:pointer;
+}
+
+/* Desktop */
+#desktop {
+    display:none;
+    width:100vw;
+    height:100vh;
+    background:var(--desktop-bg);
+    position:relative;
+}
+
+/* Taskbar */
+#taskbar {
+    position:absolute;
+    bottom:0;
+    width:100%;
+    height:45px;
+    background:var(--taskbar-bg);
+    backdrop-filter:blur(10px);
+    display:flex;
+    align-items:center;
+    color:white;
+    z-index:1000;
+}
+
+#startBtn {
+    padding:0 16px;
+    height:100%;
+    display:flex;
+    align-items:center;
+    cursor:pointer;
+    font-weight:600;
+}
+#startBtn:hover {background:rgba(255,255,255,0.1);}
+
+#taskbar-apps {
+    display:flex;
+    gap:6px;
+    margin-left:8px;
+}
+
+.taskbar-icon {
+    padding:4px 10px;
+    border-radius:4px;
+    cursor:pointer;
+    font-size:13px;
+    background:transparent;
+    border:none;
+    color:#fff;
+}
+.taskbar-icon.active {
+    background:rgba(255,255,255,0.15);
+}
+
+#clock {
+    margin-left:auto;
+    padding:0 15px;
+    font-size:13px;
+    opacity:0.9;
+}
+
+#themeToggle {
+    margin-right:10px;
+    padding:4px 10px;
+    border-radius:4px;
+    border:none;
+    background:rgba(255,255,255,0.1);
+    color:#fff;
+    cursor:pointer;
+    font-size:12px;
+}
+
+/* Start Menu */
+#startMenu {
+    display:none;
+    position:absolute;
+    bottom:50px;
+    left:5px;
+    width:320px;
+    background:var(--start-bg);
+    color:var(--start-text);
+    padding:10px;
+    border-radius:8px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.5);
+}
+
+#startMenu h3 {
+    margin:5px 0 8px;
+    font-size:14px;
+    opacity:0.8;
+}
+
+.menu-section {
+    margin-bottom:8px;
+    border-top:1px solid rgba(255,255,255,0.08);
+    padding-top:6px;
+}
+
+.menu-item {
+    padding:8px;
+    cursor:pointer;
+    border-radius:4px;
+    font-size:14px;
+    display:flex;
+    align-items:center;
+    gap:6px;
+}
+.menu-item span.icon {
+    font-size:18px;
+}
+.menu-item:hover {background:var(--accent);}
+
+/* Windows */
+.window {
+    position:absolute;
+    width:600px;
+    height:420px;
+    background:var(--win-bg);
+    border-radius:8px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.4);
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+    border:1px solid rgba(0,0,0,0.2);
+}
+
+.window-header {
+    background:var(--win-header-bg);
+    padding:8px 10px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    cursor:move;
+    user-select:none;
+    font-size:14px;
+}
+
+.window-header-left {
+    display:flex;
+    align-items:center;
+    gap:8px;
+}
+
+.window-controls {
+    display:flex;
+    gap:6px;
+}
+
+.win-btn {
+    width:12px;
+    height:12px;
+    border-radius:50%;
+    border:none;
+    cursor:pointer;
+}
+.win-close {background:#ff5f56;}
+.win-min {background:#ffbd2e;}
+.win-max {background:#27c93f;}
+
+.window-content {
+    flex:1;
+    padding:10px;
+    overflow:auto;
+    font-size:14px;
+}
+
+/* Explorer */
+.explorer-grid {
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(90px,1fr));
+    gap:15px;
+    margin-top:10px;
+}
+
+.file-icon {
+    text-align:center;
+    cursor:pointer;
+    padding:10px;
+    border-radius:5px;
+}
+.file-icon:hover {background:#e5f3ff;}
+
+.icon-img {font-size:35px;display:block;margin-bottom:5px;}
+
+/* AI Control Center */
+.ai-row {
+    display:flex;
+    gap:10px;
+    margin-top:8px;
+}
+.ai-panel {
+    flex:1;
+    border-radius:6px;
+    padding:6px;
+    font-size:13px;
+    background:rgba(0,0,0,0.03);
+}
+.ai-panel h4 {
+    margin:0 0 4px;
+    font-size:13px;
+}
+.ai-panel pre {
+    white-space:pre-wrap;
+    font-family:Consolas,monospace;
+    font-size:12px;
+}
+
+/* Terminal */
+#termOutput {
+    height:85%;
+    overflow:auto;
+    color:#0f0;
+    background:black;
+    font-family:monospace;
+    padding:5px;
+    font-size:13px;
+}
+#termInput {
+    width:100%;
+    background:black;
+    color:#0f0;
+    border:none;
+    outline:none;
+    font-family:monospace;
+    font-size:13px;
+}
+
+/* Notepad */
+.notepad-area {
+    width:100%;
+    height:100%;
+    border:none;
+    outline:none;
+    resize:none;
+    font-family:Consolas,monospace;
+    font-size:14px;
+}
+
+/* Browser */
+.browser-bar {
+    display:flex;
+    gap:4px;
+    margin-bottom:6px;
+}
+.browser-bar input {
+    flex:1;
+    padding:4px 6px;
+    font-size:13px;
+}
+.browser-bar button {
+    padding:4px 10px;
+    font-size:13px;
+    border:none;
+    border-radius:4px;
+    background:var(--accent);
+    color:#fff;
+    cursor:pointer;
+}
+#browserFrame {
+    width:100%;
+    height:90%;
+    border:none;
+}
+</style>
+</head>
+
+<body>
+
+<div id="boot">
+    <div class="spinner"></div>
+    <div>TriOS is Loading AI Collaboration Kernel...</div>
+</div>
+
+<div id="login">
+    <h2>Welcome, Admin</h2>
+    <p style="opacity:0.8;font-size:14px;">ChatGPT + Gemini + Copilot are standing by.</p>
+    <button onclick="login()">Sign In</button>
+</div>
+
+<div id="desktop">
+    <div id="taskbar">
+        <div id="startBtn" onclick="toggleStart()">💠 TriOS</div>
+        <div id="taskbar-apps"></div>
+        <button id="themeToggle" onclick="toggleTheme()">☾ Theme</button>
+        <div id="clock"></div>
+    </div>
+
+    <div id="startMenu">
+        <h3>Core Apps</h3>
+        <div class="menu-section">
+            <div class="menu-item" onclick="openApp('explorer')">
+                <span class="icon">📁</span> <span>File Explorer</span>
+            </div>
+            <div class="menu-item" onclick="openApp('notepad')">
+                <span class="icon">📝</span> <span>Notepad</span>
+            </div>
+            <div class="menu-item" onclick="openApp('browser')">
+                <span class="icon">🌐</span> <span>Browser</span>
+            </div>
+            <div class="menu-item" onclick="openApp('terminal')">
+                <span class="icon">💻</span> <span>Terminal</span>
+            </div>
+            <div class="menu-item" onclick="openApp('ai-center')">
+                <span class="icon">🤖</span> <span>AI Control Center</span>
+            </div>
+        </div>
+
+        <h3>AI Profiles</h3>
+        <div class="menu-section">
+            <div class="menu-item" onclick="openApp('chatgpt-panel')">
+                <span class="icon">🧠</span> <span>ChatGPT Panel</span>
+            </div>
+            <div class="menu-item" onclick="openApp('gemini-panel')">
+                <span class="icon">✨</span> <span>Gemini Panel</span>
+            </div>
+            <div class="menu-item" onclick="openApp('copilot-panel')">
+                <span class="icon">🪟</span> <span>Copilot Panel</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+/* ===== SAFE STARTUP ===== */
+document.addEventListener("DOMContentLoaded", () => {
+    setTimeout(() => {
+        const boot = document.getElementById("boot");
+        const login = document.getElementById("login");
+        if (boot) boot.style.display = "none";
+        if (login) login.style.display = "flex";
+    }, 2000);
+});
+
+/* ===== LOGIN ===== */
+function login(){
+    document.getElementById("login").style.display="none";
+    document.getElementById("desktop").style.display="block";
+    updateClock();
+}
+
+/* ===== CLOCK ===== */
+function updateClock(){
+    setInterval(()=>{
+        document.getElementById("clock").innerText =
+        new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    },1000);
+}
+
+/* ===== THEME ===== */
+function toggleTheme(){
+    document.body.classList.toggle("dark");
+}
+
+/* ===== START MENU ===== */
+function toggleStart(){
+    let menu=document.getElementById("startMenu");
+    menu.style.display = menu.style.display==="block"?"none":"block";
+}
+
+/* ===== FILE SYSTEM ===== */
+let fileSystem={
+    "/":{type:"folder",contents:{
+        "Documents":{type:"folder",contents:{
+            "notes.txt":{type:"file",content:"Welcome to TriOS.\nAI Collaboration System.\nChatGPT + Gemini + Copilot."}
+        }},
+        "ReadMe.txt":{type:"file",content:"TriOS - A fictional OS where ChatGPT, Gemini, and Copilot collaborate."}
+    }}
+};
+
+let currentPath="/";
+
+/* ===== WINDOW / APP ENGINE ===== */
+let zIndexCounter = 200;
+let windowIdCounter = 0;
+const windowsById = {};
+const taskbarApps = document.getElementById("taskbar-apps");
+
+function openApp(app){
+    toggleStart();
+    const titleMap = {
+        "explorer":"File Explorer",
+        "notepad":"Notepad",
+        "browser":"Browser",
+        "terminal":"Terminal",
+        "ai-center":"AI Control Center",
+        "chatgpt-panel":"ChatGPT Panel",
+        "gemini-panel":"Gemini Panel",
+        "copilot-panel":"Copilot Panel"
+    };
+    let win = createWindow(titleMap[app] || app.toUpperCase(), app);
+    let content = win.querySelector(".window-content");
+
+    if(app==="explorer") renderExplorer(content);
+    else if(app==="notepad") renderNotepad(content);
+    else if(app==="browser") renderBrowser(content);
+    else if(app==="terminal") renderTerminal(content);
+    else if(app==="ai-center") renderAICenter(content);
+    else if(app==="chatgpt-panel") renderAIPanel(content,"ChatGPT","Reasoning & structure","🧠");
+    else if(app==="gemini-panel") renderAIPanel(content,"Gemini","Multimodal & creativity","✨");
+    else if(app==="copilot-panel") renderAIPanel(content,"Copilot","Productivity & integration","🪟");
+}
+
+function createWindow(title, appKey){
+    const desktop = document.getElementById("desktop");
+    let win=document.createElement("div");
+    win.className="window";
+    win.style.top=80+Math.random()*60+"px";
+    win.style.left=80+Math.random()*60+"px";
+    win.style.zIndex = ++zIndexCounter;
+
+    const id = "win_"+(++windowIdCounter);
+    win.dataset.winId = id;
+    windowsById[id] = { element: win, appKey, minimized:false };
+
+    win.innerHTML=`
+        <div class="window-header">
+            <div class="window-header-left">
+                <span>${title}</span>
+            </div>
+            <div class="window-controls">
+                <button class="win-btn win-min" title="Minimize"></button>
+                <button class="win-btn win-max" title="Maximize"></button>
+                <button class="win-btn win-close" title="Close"></button>
+            </div>
+        </div>
+        <div class="window-content"></div>
+    `;
+
+    desktop.appendChild(win);
+    dragElement(win,win.querySelector(".window-header"));
+
+    // Focus on click
+    win.addEventListener("mousedown", () => {
+        win.style.zIndex = ++zIndexCounter;
+    });
+
+    // Controls
+    const closeBtn = win.querySelector(".win-close");
+    const minBtn = win.querySelector(".win-min");
+    const maxBtn = win.querySelector(".win-max");
+
+    closeBtn.onclick = () => closeWindow(id);
+    minBtn.onclick = () => minimizeWindow(id);
+    maxBtn.onclick = () => toggleMaximizeWindow(id);
+
+    createTaskbarButton(id, title);
+
+    return win;
+}
+
+function createTaskbarButton(id, title){
+    const btn = document.createElement("button");
+    btn.className = "taskbar-icon active";
+    btn.textContent = title;
+    btn.dataset.winId = id;
+    btn.onclick = () => toggleWindowFromTaskbar(id);
+    taskbarApps.appendChild(btn);
+}
+
+function getTaskbarButton(id){
+    return taskbarApps.querySelector(`button[data-win-id="${id}"]`);
+}
+
+function closeWindow(id){
+    const winObj = windowsById[id];
+    if(!winObj) return;
+    winObj.element.remove();
+    delete windowsById[id];
+    const btn = getTaskbarButton(id);
+    if(btn) btn.remove();
+}
+
+function minimizeWindow(id){
+    const winObj = windowsById[id];
+    if(!winObj) return;
+    winObj.element.style.display = "none";
+    winObj.minimized = true;
+    const btn = getTaskbarButton(id);
+    if(btn) btn.classList.remove("active");
+}
+
+function toggleMaximizeWindow(id){
+    const winObj = windowsById[id];
+    if(!winObj) return;
+    const win = winObj.element;
+    if(win.dataset.maximized === "true"){
+        win.style.top = win.dataset.prevTop;
+        win.style.left = win.dataset.prevLeft;
+        win.style.width = win.dataset.prevWidth;
+        win.style.height = win.dataset.prevHeight;
+        win.dataset.maximized = "false";
+    } else {
+        win.dataset.prevTop = win.style.top;
+        win.dataset.prevLeft = win.style.left;
+        win.dataset.prevWidth = win.style.width;
+        win.dataset.prevHeight = win.style.height;
+        win.style.top = "10px";
+        win.style.left = "10px";
+        win.style.width = "calc(100vw - 20px)";
+        win.style.height = "calc(100vh - 70px)";
+        win.dataset.maximized = "true";
+    }
+}
+
+function toggleWindowFromTaskbar(id){
+    const winObj = windowsById[id];
+    if(!winObj) return;
+    const win = winObj.element;
+    const btn = getTaskbarButton(id);
+    if(win.style.display === "none"){
+        win.style.display = "flex";
+        win.style.zIndex = ++zIndexCounter;
+        winObj.minimized = false;
+        if(btn) btn.classList.add("active");
+    } else {
+        minimizeWindow(id);
+    }
+}
+
+/* ===== EXPLORER ===== */
+function renderExplorer(container){
+    container.innerHTML=`<button onclick="goBack()">⬅ Back</button> <strong>${currentPath}</strong><div class="explorer-grid"></div>`;
+    let grid=container.querySelector(".explorer-grid");
+    let folder=getFolder(currentPath);
+
+    for(let name in folder.contents){
+        let item=folder.contents[name];
+        let icon=document.createElement("div");
+        icon.className="file-icon";
+        icon.innerHTML=`<span class="icon-img">${item.type==="folder"?"📂":"📄"}</span><span>${name}</span>`;
+        icon.onclick=()=>{
+            if(item.type==="folder"){
+                currentPath+=name+"/";
+                renderExplorer(container);
+            }else alert(item.content);
+        };
+        grid.appendChild(icon);
+    }
+}
+
+function getFolder(path){
+    let parts=path.split("/").filter(p=>p);
+    let folder=fileSystem["/"];
+    for(let part of parts) folder=folder.contents[part];
+    return folder;
+}
+
+function goBack(){
+    if(currentPath!=="/"){
+        let parts=currentPath.split("/").filter(p=>p);
+        parts.pop();
+        currentPath="/"+(parts.length?parts.join("/")+"/":"");
+    }
+}
+
+/* ===== NOTEPAD ===== */
+function renderNotepad(container){
+    container.innerHTML = `
+        <textarea class="notepad-area" spellcheck="false">
+TriOS Notepad
+-------------
+Use this space to draft prompts for ChatGPT, Gemini, and Copilot.
+        </textarea>
+    `;
+}
+
+/* ===== BROWSER ===== */
+function renderBrowser(container){
+    container.innerHTML=`
+        <div class="browser-bar">
+            <input id="urlBar" placeholder="example.com">
+            <button onclick="loadSite()">Go</button>
+        </div>
+        <iframe id="browserFrame"></iframe>
+    `;
+}
+
+function loadSite(){
+    let url=document.getElementById("urlBar").value;
+    if(!url.startsWith("http")) url="https://"+url;
+    document.getElementById("browserFrame").src=url;
+}
+
+/* ===== TERMINAL ===== */
+function renderTerminal(container){
+    container.innerHTML=`
+        <div id="termOutput"></div>
+        <input id="termInput" autocomplete="off">
+    `;
+
+    let input=container.querySelector("#termInput");
+    let output=container.querySelector("#termOutput");
+
+    let commands={
+        help:()=>`help\nls\nclear\nabout\ntri-ai\ncommand secret\nsecret`,
+        ls:()=>Object.keys(getFolder(currentPath).contents).join("\n"),
+        clear:()=>{output.innerHTML="";return"";},
+        about:()=>`TriOS Kernel v3\nAI Collaboration Build`,
+        "tri-ai":()=>`ChatGPT: reasoning\nGemini: multimodal\nCopilot: productivity\nAll: collaborating.`
+    };
+
+    let secretCommands={
+        "command secret":()=>`Try typing: secret`,
+        secret:()=>`matrix\nsudo\nai`,
+        matrix:()=>`Entering Matrix...`,
+        sudo:()=>`Permission denied.`,
+        ai:()=>`AI Core Active.`
+    };
+
+    input.addEventListener("keydown",e=>{
+        if(e.key==="Enter"){
+            let cmd=input.value.trim();
+            output.innerHTML+=`> ${cmd}<br>`;
+            if(commands[cmd]) output.innerHTML+=commands[cmd]()+"<br>";
+            else if(secretCommands[cmd]) output.innerHTML+=secretCommands[cmd]()+"<br>";
+            else output.innerHTML+="Command not found<br>";
+            input.value="";
+            output.scrollTop=output.scrollHeight;
+        }
+    });
+}
+
+/* ===== AI CONTROL CENTER ===== */
+function renderAICenter(container){
+    container.innerHTML = `
+        <div>
+            <strong>AI Control Center</strong><br>
+            <small>Send a prompt and see how each AI "responds" in its own style.</small>
+        </div>
+        <div style="margin-top:8px;">
+            <textarea id="aiPrompt" style="width:100%;height:60px;resize:none;"></textarea>
+        </div>
+        <button id="aiRunBtn" style="margin-top:6px;padding:4px 10px;border:none;border-radius:4px;background:var(--accent);color:#fff;cursor:pointer;font-size:13px;">
+            Run Tri-Collab
+        </button>
+        <div class="ai-row">
+            <div class="ai-panel" id="aiChatGPT">
+                <h4>🧠 ChatGPT</h4>
+                <pre>(waiting)</pre>
+            </div>
+            <div class="ai-panel" id="aiGemini">
+                <h4>✨ Gemini</h4>
+                <pre>(waiting)</pre>
+            </div>
+            <div class="ai-panel" id="aiCopilot">
+                <h4>🪟 Copilot</h4>
+                <pre>(waiting)</pre>
+            </div>
+        </div>
+    `;
+
+    const btn = container.querySelector("#aiRunBtn");
+    const promptBox = container.querySelector("#aiPrompt");
+    const chatGPTPanel = container.querySelector("#aiChatGPT pre");
+    const geminiPanel = container.querySelector("#aiGemini pre");
+    const copilotPanel = container.querySelector("#aiCopilot pre");
+
+    btn.onclick = () => {
+        const prompt = promptBox.value.trim() || "(no prompt)";
+        chatGPTPanel.textContent = "Analyzing prompt...\n\n" +
+            "• Breaks problem into steps\n• Suggests structure\n• Flags edge cases\n\nPrompt:\n" + prompt;
+        geminiPanel.textContent = "Imagining multimodal context...\n\n" +
+            "• Visual/creative angle\n• Alternative perspectives\n• Narrative framing\n\nPrompt:\n" + prompt;
+        copilotPanel.textContent = "Turning into actions...\n\n" +
+            "• Concrete tasks\n• Integration points\n• Shortcuts & automation\n\nPrompt:\n" + prompt;
+    };
+}
+
+/* ===== AI PANELS (SIMPLE INFO WINDOWS) ===== */
+function renderAIPanel(container, name, focus, icon){
+    container.innerHTML = `
+        <h3>${icon} ${name}</h3>
+        <p><strong>Primary focus:</strong> ${focus}</p>
+        <p style="font-size:13px;opacity:0.8;">
+            This panel is a fictional profile inside TriOS. In reality, ${name} would run on its own stack,
+            but here we treat it as one node in a shared OS where prompts, files, and context can be passed around.
+        </p>
+        <ul style="font-size:13px;line-height:1.4;">
+            <li><strong>Strengths:</strong> High-level reasoning, style control, and collaborative iteration.</li>
+            <li><strong>Role in TriOS:</strong> One of three cores in the AI Collaboration Kernel.</li>
+        </ul>
+    `;
+}
+
+/* ===== DRAG ===== */
+function dragElement(elmnt,header){
+    let pos1=0,pos2=0,pos3=0,pos4=0;
+    header.onmousedown=e=>{
+        if(e.target.closest(".window-controls")) return; // don't drag from buttons
+        e.preventDefault();
+        elmnt.style.zIndex = ++zIndexCounter;
+        pos3=e.clientX;pos4=e.clientY;
+        document.onmouseup=()=>{document.onmousemove=null;};
+        document.onmousemove=e=>{
+            pos1=pos3-e.clientX;pos2=pos4-e.clientY;
+            pos3=e.clientX;pos4=e.clientY;
+            elmnt.style.top=(elmnt.offsetTop-pos2)+"px";
+            elmnt.style.left=(elmnt.offsetLeft-pos1)+"px";
+        };
+    };
+}
+</script>
+</body>
+</html>
